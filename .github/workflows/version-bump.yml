@@ -95,7 +95,7 @@ jobs:
           NEXT="${{ steps.next.outputs.version }}"
 
           git add build.gradle.kts
-          git commit -m "chore: bump version to ${NEXT} [skip ci]"
+          git commit -m "chore: bump version to ${NEXT}"
           git push origin master
 
           git tag -a "v${NEXT}" -m "Release v${NEXT}"
