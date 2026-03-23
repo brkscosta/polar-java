@@ -1,6 +1,7 @@
 name: Release & Publish
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - 'v*'
@@ -27,9 +28,14 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Validate tag matches semver
+      - name: Determine release version
         run: |
-          TAG=${GITHUB_REF#refs/tags/}
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            TAG=${GITHUB_REF#refs/tags/}
+          else
+            VERSION=$(grep -oP '(?<=\?\: ")[0-9]+\.[0-9]+\.[0-9]+' build.gradle.kts | head -1)
+            TAG="v${VERSION}"
+          fi
           if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-.*)?$ ]]; then
             echo "❌ Tag '$TAG' does not match semver pattern (vX.Y.Z)"
             exit 1
