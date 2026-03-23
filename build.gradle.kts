@@ -8,7 +8,7 @@ plugins {
 
 allprojects {
     group = "com.jsandev.polar"
-    version = System.getenv("RELEASE_VERSION")?.removePrefix("v") ?: "0.1.4"
+    version = System.getenv("RELEASE_VERSION")?.removePrefix("v") ?: "0.1.5"
 
     repositories {
         mavenCentral()
