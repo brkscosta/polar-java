@@ -9,7 +9,7 @@ Framework-agnostic — uses `java.net.http.HttpClient` (Java 11+) with zero fram
 | Module | Description |
 |---|---|
 | `polar-java-sdk` | Core SDK — works with any Java framework |
-| `polar-spring-boot-starter` | Optional Spring Boot auto-configuration |
+| `polar-spring` | Optional Spring Boot auto-configuration |
 
 ## Quick Start
 
@@ -49,7 +49,7 @@ Polar polar = new Polar(
 
 ### Spring Boot
 
-Add `polar-spring-boot-starter` to your dependencies:
+Add `polar-spring` to your dependencies:
 
 ```yaml
 # application.yml
