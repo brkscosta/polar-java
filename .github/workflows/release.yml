@@ -48,14 +48,50 @@ jobs:
         env:
           RELEASE_VERSION: ${{ env.RELEASE_VERSION }}
 
+      - name: Generate Sonatype auth token
+        run: |
+          AUTH=$(printf '%s:%s' "$OSSRH_USERNAME" "$OSSRH_TOKEN" | base64 -w0)
+          echo "SONATYPE_AUTH=$AUTH" >> $GITHUB_ENV
+        env:
+          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          OSSRH_TOKEN: ${{ secrets.OSSRH_TOKEN }}
+
+      - name: Drop stale staging repositories
+        run: |
+          echo "🔍 Searching for stale staging repositories..."
+          REPOS=$(curl -s -H "Authorization: Bearer $SONATYPE_AUTH" \
+            "https://ossrh-staging-api.central.sonatype.com/manual/search/repositories?ip=any&profile_id=sh.polar")
+          echo "$REPOS" | jq .
+
+          echo "$REPOS" | jq -r '.repositories[]?.key // empty' | while read -r KEY; do
+            echo "🗑️ Dropping stale repository: $KEY"
+            curl -s -X DELETE -H "Authorization: Bearer $SONATYPE_AUTH" \
+              "https://ossrh-staging-api.central.sonatype.com/manual/drop/repository/$KEY"
+          done
+          echo "✅ Cleanup complete"
+
       - name: Publish to Maven Central (Sonatype OSSRH)
-        run: ./gradlew publishMavenJavaPublicationToOSSRHRepository
+        run: ./gradlew publishMavenJavaPublicationToOSSRHRepository --info
         env:
           RELEASE_VERSION: ${{ env.RELEASE_VERSION }}
           OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           OSSRH_TOKEN: ${{ secrets.OSSRH_TOKEN }}
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+
+      - name: Upload staging repository to Central Portal
+        run: |
+          echo "📦 Uploading staging repository to Central Portal..."
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
+            -H "Authorization: Bearer $SONATYPE_AUTH" \
+            "https://ossrh-staging-api.central.sonatype.com/manual/upload/defaultRepository/sh.polar?publishing_type=automatic")
+
+          if [[ "$HTTP_STATUS" -ge 200 && "$HTTP_STATUS" -lt 300 ]]; then
+            echo "✅ Staging repository uploaded and will auto-publish to Maven Central"
+          else
+            echo "❌ Upload failed with HTTP status: $HTTP_STATUS"
+            exit 1
+          fi
 
       - name: Publish to GitHub Packages
         run: ./gradlew publishMavenJavaPublicationToGitHubPackagesRepository
