@@ -6,7 +6,7 @@ plugins {
 
 allprojects {
     group = "sh.polar"
-    version = System.getenv("RELEASE_VERSION")?.removePrefix("v") ?: "0.1.0"
+    version = System.getenv("RELEASE_VERSION")?.removePrefix("v") ?: "0.1.1"
 
     repositories {
         mavenCentral()
