@@ -1,0 +1,101 @@
+name: Version Bump
+
+on:
+  pull_request:
+    types: [ closed ]
+    branches: [ master ]
+
+permissions:
+  contents: write
+
+jobs:
+  bump:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    name: Auto bump version & tag
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Determine version bump type
+        id: bump-type
+        run: |
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          PR_LABELS="${{ join(github.event.pull_request.labels.*.name, ',') }}"
+
+          if echo "$PR_LABELS" | grep -qi "major"; then
+            echo "type=major" >> $GITHUB_OUTPUT
+          elif echo "$PR_LABELS" | grep -qi "minor"; then
+            echo "type=minor" >> $GITHUB_OUTPUT
+          elif echo "$PR_TITLE" | grep -qiE "^feat(\\(.*\\))?!:"; then
+            echo "type=major" >> $GITHUB_OUTPUT
+          elif echo "$PR_TITLE" | grep -qiE "^feat(\\(.*\\))?:"; then
+            echo "type=minor" >> $GITHUB_OUTPUT
+          else
+            echo "type=patch" >> $GITHUB_OUTPUT
+          fi
+
+          echo "Bump type: $(cat $GITHUB_OUTPUT | grep type | cut -d= -f2)"
+
+      - name: Get current version
+        id: current
+        run: |
+          VERSION=$(grep -oP '(?<=\?\: ")[0-9]+\.[0-9]+\.[0-9]+' build.gradle.kts | head -1)
+          if [ -z "$VERSION" ]; then
+            VERSION="0.1.0"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Current version: $VERSION"
+
+      - name: Calculate next version
+        id: next
+        run: |
+          CURRENT="${{ steps.current.outputs.version }}"
+          TYPE="${{ steps.bump-type.outputs.type }}"
+
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+
+          case "$TYPE" in
+            major)
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+              ;;
+            minor)
+              MINOR=$((MINOR + 1))
+              PATCH=0
+              ;;
+            patch)
+              PATCH=$((PATCH + 1))
+              ;;
+          esac
+
+          NEXT="${MAJOR}.${MINOR}.${PATCH}"
+          echo "version=$NEXT" >> $GITHUB_OUTPUT
+          echo "Next version: $NEXT (bump type: $TYPE)"
+
+      - name: Update version in build.gradle.kts
+        run: |
+          NEXT="${{ steps.next.outputs.version }}"
+          sed -i "s/?: \"[0-9]*\.[0-9]*\.[0-9]*\"/?: \"${NEXT}\"/" build.gradle.kts
+          echo "Updated build.gradle.kts to version $NEXT"
+          grep "version" build.gradle.kts | head -1
+
+      - name: Commit and tag
+        run: |
+          NEXT="${{ steps.next.outputs.version }}"
+
+          git add build.gradle.kts
+          git commit -m "chore: bump version to ${NEXT} [skip ci]"
+          git tag -a "v${NEXT}" -m "Release v${NEXT}"
+          git push origin master --follow-tags
+
+          echo "✅ Tagged and pushed v${NEXT}"
