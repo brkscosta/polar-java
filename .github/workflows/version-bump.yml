@@ -95,7 +95,9 @@ jobs:
 
           git add build.gradle.kts
           git commit -m "chore: bump version to ${NEXT} [skip ci]"
+          git push origin master
+
           git tag -a "v${NEXT}" -m "Release v${NEXT}"
-          git push origin master --follow-tags
+          git push origin "v${NEXT}"
 
           echo "✅ Tagged and pushed v${NEXT}"
