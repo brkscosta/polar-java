@@ -45,8 +45,10 @@ subprojects {
                         "https://ossrh-staging-api.central.sonatype.com/service/local/staging/deploy/maven2/"
                 )
                 credentials {
-                    username = System.getenv("OSSRH_USERNAME") ?: ""
-                    password = System.getenv("OSSRH_TOKEN") ?: ""
+                    val token = System.getenv("OSSRH_TOKEN") ?: ""
+                    val decoded = if (token.isNotBlank()) String(java.util.Base64.getDecoder().decode(token)) else ":"
+                    username = decoded.substringBefore(":")
+                    password = decoded.substringAfter(":")
                 }
             }
             maven {
