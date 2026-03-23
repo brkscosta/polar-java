@@ -1,3 +1,5 @@
+import java.util.Base64
+
 plugins {
     `java-library`
     `maven-publish`
@@ -45,8 +47,10 @@ subprojects {
                         "https://ossrh-staging-api.central.sonatype.com/service/local/staging/deploy/maven2/"
                 )
                 credentials {
-                    username = System.getenv("OSSRH_USERNAME") ?: ""
-                    password = System.getenv("OSSRH_TOKEN") ?: ""
+                    val token = System.getenv("OSSRH_TOKEN") ?: ""
+                    val decoded = if (token.isNotBlank()) String(Base64.getDecoder().decode(token), Charsets.UTF_8) else ":"
+                    username = decoded.substringBefore(":")
+                    password = decoded.substringAfter(":")
                 }
             }
             maven {
