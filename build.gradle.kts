@@ -7,7 +7,7 @@ plugins {
 }
 
 allprojects {
-    group = "sh.polar"
+    group = "com.jsandev.polar"
     version = System.getenv("RELEASE_VERSION")?.removePrefix("v") ?: "0.1.3"
 
     repositories {
